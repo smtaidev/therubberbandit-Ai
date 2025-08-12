@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    container_name: rubber
+    ports:
+      - "8008:8008"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

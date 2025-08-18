@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     gcp_processor_id: str = Field(..., env="GCP_PROCESSOR_ID")
     gcp_key_path: str = Field("client-docai.json", env="GCP_KEY_PATH")
 
+    GROQ_URL:str = Field(..., env="GROQ_URL")
+    GROQ_MODEL:str = Field(..., env="GROQ_MODEL")
+    GROQ_API_KEY: str = Field(..., env="GROQ_API_KEY")
+
     @property
     def processor_name(self) -> str:
         """Full Document AI processor path"""

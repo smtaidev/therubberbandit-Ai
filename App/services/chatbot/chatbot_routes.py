@@ -41,7 +41,7 @@ async def concierge(
     payload = {
         "model": settings.GROQ_MODEL,
         "messages": history,
-        "max_tokens": 80,
+        "max_tokens": 200,
         "temperature": 0.55
     }
 

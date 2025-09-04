@@ -4,3 +4,7 @@
 __pycache__
 
 *.json
+.json
+*.log
+*.pot
+*.pyc   

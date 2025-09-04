@@ -1,5 +1,6 @@
 .env
 .qodo
 .venv
-main2.py
 __pycache__
+
+*.json

@@ -20,17 +20,22 @@ async def concierge(
 
     # Build dynamic system prompt based on audit flags
     base = (
-        "You are an expert car-deal negotiator called 'Concierge'.\n"
-        "The dealer target price is $100.\n"
-    )
-    if "GAP_HIGH" in req.audit_flags:
-        base += "- Dealer GAP price is flagged as excessive; insist on fair market.\n"
-    if "VSC_HIGH" in req.audit_flags:
-        base += "- VSC add-on is overpriced; push for reduction.\n"
+    "You are an expert negotiation coach named 'Concierge'.\n"
+    "Your job is to help users negotiate prices for products, services, or deals in a clear, concise, and persuasive way.\n"
+    "Offer language they can use in messages, emails, or phone calls.\n"
+)
+
+    if "HIGH_PRICE" in req.audit_flags:
+        base += "- The initial price is flagged as high; recommend negotiating for a fair market value.\n"
+    if "ADDON_OVERCHARGE" in req.audit_flags:
+        base += "- Optional add-ons appear overpriced; suggest pushing back or removing them.\n"
+
     base += (
-        "Be firm but professional. "
-        "Return only the concise counter-offer or acceptance the buyer should send."
-    )
+    "Be strategic, assertive, and respectful. "
+    "Avoid filler or small talk. "
+    "Respond only with the message the user should send."
+)
+
 
     # Server-side memory
     history = memory.get(thread_id, [])

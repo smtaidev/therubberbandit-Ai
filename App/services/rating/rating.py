@@ -9,7 +9,7 @@ load_dotenv()  # loads variables from .env into environment
 
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # Set in environment
-GROQ_MODEL = "llama3-8b-8192"  # Example Groq model
+GROQ_MODEL = os.getenv("GROQ_MODEL")  # Example Groq model
 
 audit_system_prompt = """
 You are **SmartBuyer AI Audit Engine**, the definitive scoring and auditing system for auto finance deals.  
@@ -189,7 +189,7 @@ def call_groq_audit(deal_data: Dict):
     }
 
     resp = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
+        "https://api.openai.com/v1/chat/completions",
         headers=headers,
         json=payload
     )

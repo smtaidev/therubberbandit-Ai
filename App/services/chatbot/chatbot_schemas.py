@@ -1,8 +1,10 @@
 from pydantic import BaseModel, Field
+from typing import List, Optional
+
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1)          # latest dealer reply
-    audit_flags: list[str] = Field(default_factory=list)  # GAP/VSC/etc flags
-
+    message: str
+    audit_flags: Optional[List[str]] = []
+    context: Optional[str] = None
 class ChatResponse(BaseModel):
     reply: str

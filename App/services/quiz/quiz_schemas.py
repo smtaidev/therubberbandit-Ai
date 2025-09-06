@@ -1,8 +1,9 @@
+from typing import Dict
 from pydantic import BaseModel
-from typing import List
 
 class QuizQuestion(BaseModel):
     question: str
-    options: List[str]
+    options: Dict[str, str]  # A, B, C, D as keys
     correct_answer: str
     explanation: str
+

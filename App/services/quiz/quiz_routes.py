@@ -4,42 +4,67 @@ from App.services.quiz.quiz_schemas import QuizQuestion
 from App.core.config import settings
 from typing import List
 import json 
-
+from enum import Enum
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
-QUIZ_GENERATION_PROMPT = (
-    """You are an expert car sales trainer. Generate a multiple-choice quiz question to test consumer knowledge about car buying, dealership practices, financing, trade-ins, or warranties.
+class SupportedLanguage(str, Enum):
+    english = "English"
+    spanish = "Spanish"
+    arabic  = "Arabic"
+    mandarin = "Mandarin"
+    hindi = "Hindi"
+     
 
-    Respond only with a valid JSON array. Do not use markdown formatting like ```json. 
-The JSON array should contain objects with the following keys:
-- question (string)
-- options (list of 4 strings)
-- correct_answer (one of the options)
-- explanation (string explaining the correct answer)
+QUIZ_GENERATION_PROMPT = """
+You are an expert car sales trainer. Generate multiple-choice quiz questions to test consumer knowledge about car buying, dealership practices, financing, trade-ins, GAP Logic, VSC Logic, Lease Audit, APR or warranties.
+MAKE SURE YOU PROVIDE THE ANSWERS CORRECTLY.
 
-Example:
+Respond only with a valid JSON array. Do not use markdown formatting like ```json.
+
+Each object in the array should have the following structure:
+- question: A string representing the quiz question.
+- options: An object with keys "A", "B", "C", and "D", and values being the corresponding answer texts.
+- correct_answer: One of the keys "A", "B", "C", or "D", corresponding to the correct option.
+- explanation: A short string explaining why the correct answer is correct.
+
+The entire output should be in the language requested by the user.
+Example format:
+
 [
   {
-    "question": "...",
-    "options": ["A", "B", "C", "D"],
-    "correct_answer": "B", 
-    "explanation": "..."
+    "question": "What is the purpose of a vehicle history report when buying a used car?",
+    "options": {
+      "A": "To determine the car's fuel efficiency",
+      "B": "To check for past accidents and title issues",
+      "C": "To find out the original price of the car",
+      "D": "To estimate the car's future resale value"
+    },
+    "correct_answer": "B",
+    "explanation": "A vehicle history report provides important information about a used car, including any past accidents, title issues, service history, and whether the car has been reported as stolen."
   }
 ]
 """
-)
+
+
+
+
 
 @router.post("/generate", response_model=List[QuizQuestion])
 async def generate_quiz_questions(
-    count: int = Query(1, ge=1, le=10, description="Number of quiz questions to generate")
+    count: int = Query(1, ge=1, le=10),
+    language: SupportedLanguage = Query(SupportedLanguage.english)
 ):
     if not settings.GROQ_API_KEY or not settings.GROQ_URL:
         raise HTTPException(status_code=500, detail="LLM API settings not configured")
 
     # Create chat messages
     messages = [{"role": "system", "content": QUIZ_GENERATION_PROMPT}]
-    messages.append({"role": "user", "content": f"Generate {count} unique quiz question(s). Return only a JSON list."})
+    messages.append({
+    "role": "user",
+    "content": f"Generate {count} unique quiz question(s) in {language.value}. Return only a JSON list."
+})
+
 
     payload = {
         "model": settings.GROQ_MODEL,

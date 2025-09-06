@@ -7,3 +7,5 @@ class QuizQuestion(BaseModel):
     correct_answer: str
     explanation: str
 
+class QuizRequest(BaseModel):
+    user_input: str

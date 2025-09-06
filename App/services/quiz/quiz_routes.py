@@ -5,6 +5,7 @@ from App.core.config import settings
 from typing import List
 import json 
 from enum import Enum
+from App.services.quiz.quiz_schemas import QuizQuestion, QuizRequest
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
@@ -17,7 +18,7 @@ class SupportedLanguage(str, Enum):
      
 
 QUIZ_GENERATION_PROMPT = """
-You are an expert car sales trainer. Generate multiple-choice quiz questions to test consumer knowledge about car buying, dealership practices, financing, trade-ins, GAP Logic, VSC Logic, Lease Audit, APR or warranties.
+You are an expert car sales trainer. Generate multiple-choice quiz questions to test consumer knowledge about car buying, dealership practices, financing, trade-ins, GAP Logic, VSC Logic, Lease Audit, APR or warranties and others. Always provide new, unique questions that are not commonly found online. 
 MAKE SURE YOU PROVIDE THE ANSWERS CORRECTLY.
 
 Respond only with a valid JSON array. Do not use markdown formatting like ```json.
@@ -47,24 +48,28 @@ Example format:
 """
 
 
-
-
+# Add this at the top, outside the function, as a module-level cache
+generated_questions_cache = set()
 
 @router.post("/generate", response_model=List[QuizQuestion])
 async def generate_quiz_questions(
+    body: QuizRequest,
     count: int = Query(1, ge=1, le=10),
-    language: SupportedLanguage = Query(SupportedLanguage.english)
+    language: SupportedLanguage = Query(SupportedLanguage.english),
 ):
+    user_input = body.user_input
+
     if not settings.GROQ_API_KEY or not settings.GROQ_URL:
         raise HTTPException(status_code=500, detail="LLM API settings not configured")
 
-    # Create chat messages
-    messages = [{"role": "system", "content": QUIZ_GENERATION_PROMPT}]
-    messages.append({
-    "role": "user",
-    "content": f"Generate {count} unique quiz question(s) in {language.value}. Return only a JSON list."
-})
+    # Modify prompt to include user input
+    system_prompt = QUIZ_GENERATION_PROMPT + f"\n\nFocus on this topic: {user_input}"
 
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.append({
+        "role": "user",
+        "content": f"Generate {count} unique quiz question(s) in {language.value}. Return only a JSON list."
+    })
 
     payload = {
         "model": settings.GROQ_MODEL,
@@ -88,19 +93,27 @@ async def generate_quiz_questions(
             parsed = response.json()
             raw_output = parsed["choices"][0]["message"]["content"]
 
-            # 👇 Clean triple-backtick markdown if present
             cleaned = raw_output.strip().strip("`").strip()
-            if cleaned.startswith("json"):
+            if cleaned.lower().startswith("json"):
                 cleaned = cleaned[len("json"):].strip()
 
-            # 👇 Parse the JSON
             data = json.loads(cleaned)
-
-            # 👇 Ensure it's a list even if one question is returned
             if isinstance(data, dict):
                 data = [data]
 
-            return [QuizQuestion(**q) for q in data]
+            # Filter out previously generated questions using the cache
+            unique_questions = []
+            for q in data:
+                question_text = q.get("question")
+                if question_text and question_text not in generated_questions_cache:
+                    generated_questions_cache.add(question_text)
+                    unique_questions.append(q)
+
+            # If after filtering, we got less than requested, you might want to handle that
+            # (e.g. ask for more or just return fewer)
+            
+            return [QuizQuestion(**q) for q in unique_questions]
 
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Quiz generation failed: {e}")
+

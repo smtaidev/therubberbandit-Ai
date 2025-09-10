@@ -6,3 +6,4 @@ pydantic-settings
 prettytable
 python-dotenv
 httpx
+img2pdf

@@ -1,9 +1,9 @@
-# rating.py
 import os
 import requests
 from typing import Dict
 from dotenv import load_dotenv
-import os
+import json
+
 
 load_dotenv()  # loads variables from .env into environment
 
@@ -166,21 +166,19 @@ Beyond raw scoring, the AI must produce **explanations, comparisons, and insight
 }
 """
 
-
-
 def call_groq_audit(deal_data: Dict):
-    """Send the audit prompt and deal data to API"""
+    """Send the audit prompt and deal data to Groq API"""
     payload = {
         "model": GROQ_MODEL,
         "messages": [
             {"role": "system", "content": audit_system_prompt},
             {
                 "role": "user",
-                "content": f"Audit this deal and return **raw JSON only**, no code fences or extra text:\n{deal_data}"
+                "content": f"Audit this deal and return raw JSON only:\n{json.dumps(deal_data)}"
             }
-
         ],
-        "temperature": 0.5
+        "temperature": 0.1,  # Lower temperature for more consistent JSON output
+        "response_format": {"type": "json_object"}  # Force JSON output
     }
 
     headers = {
@@ -188,13 +186,22 @@ def call_groq_audit(deal_data: Dict):
         "Content-Type": "application/json"
     }
 
-    resp = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers=headers,
-        json=payload
-    )
-
-    if resp.status_code != 200:
-        raise RuntimeError(f"Groq API Error: {resp.status_code} - {resp.text}")
-
-    return resp.json()["choices"][0]["message"]["content"]
+    try:
+        # Correct Groq API endpoint
+        resp = requests.post(
+            "https://api.openai.com/v1/chat/completions",  # Updated endpoint
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        resp.raise_for_status()
+        
+        response_content = resp.json()
+        return response_content["choices"][0]["message"]["content"]
+        
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Groq API connection error: {str(e)}")
+    except KeyError:
+        raise RuntimeError("Invalid response format from Groq API")
+    except json.JSONDecodeError:
+        raise RuntimeError("Failed to parse Groq API response")

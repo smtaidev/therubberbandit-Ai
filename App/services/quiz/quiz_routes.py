@@ -23,11 +23,15 @@ MAKE SURE YOU PROVIDE THE ANSWERS CORRECTLY.
 
 Respond only with a valid JSON array. Do not use markdown formatting like ```json.
 
+IMPORTANT: You MUST generate exactly 2 quiz questions. 
+Return them strictly as a JSON array of length 2, no more and no less. 
+
+
 Each object in the array should have the following structure:
 - question: A string representing the quiz question.
 - options: An object with keys "A", "B", "C", and "D", and values being the corresponding answer texts.
 - correct_answer: One of the keys "A", "B", "C", or "D", corresponding to the correct option.
-- explanation: A short string explaining why the correct answer is correct.
+- explanation: A detailed at least 5 lined explanation explaining why the correct answer is correct. IN CHILD FRIENDLY ANALOGY.
 
 The entire output should be in the language requested by the user.
 Example format:
@@ -51,69 +55,89 @@ Example format:
 # Add this at the top, outside the function, as a module-level cache
 generated_questions_cache = set()
 
+MAX_RETRIES = 3
+
 @router.post("/generate", response_model=List[QuizQuestion])
 async def generate_quiz_questions(
     body: QuizRequest,
-    count: int = Query(1, ge=1, le=10),
-    language: SupportedLanguage = Query(SupportedLanguage.english),
+    count: int = 2
 ):
     user_input = body.user_input
+    language = body.language
 
     if not settings.GROQ_API_KEY or not settings.GROQ_URL:
         raise HTTPException(status_code=500, detail="LLM API settings not configured")
 
-    # Modify prompt to include user input
-    system_prompt = QUIZ_GENERATION_PROMPT + f"\n\nFocus on this topic: {user_input}"
+    collected = []
 
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.append({
-        "role": "user",
-        "content": f"Generate {count} unique quiz question(s) in {language.value}. Return only a JSON list."
-    })
+    for attempt in range(MAX_RETRIES):
+        needed = count - len(collected)
+        if needed <= 0:
+            break
 
-    payload = {
-        "model": settings.GROQ_MODEL,
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 1000
-    }
+        # Ask for more than needed to cover duplicates
+        requested_count = needed + 3  
 
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(
-                settings.GROQ_URL,
-                headers={
-                    "Authorization": f"Bearer {settings.GROQ_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json=payload
-            )
-            response.raise_for_status()
+        system_prompt = QUIZ_GENERATION_PROMPT + f"\n\nFocus on this topic: {user_input}"
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": (
+                    f"Generate exactly {requested_count} unique quiz question(s) in {language}. "
+                    f"Return only a JSON array of length {requested_count}."
+                ),
+            },
+        ]
 
-            parsed = response.json()
-            raw_output = parsed["choices"][0]["message"]["content"]
+        payload = {
+            "model": settings.GROQ_MODEL,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 1500,
+        }
 
-            cleaned = raw_output.strip().strip("`").strip()
-            if cleaned.lower().startswith("json"):
-                cleaned = cleaned[len("json"):].strip()
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.post(
+                    settings.GROQ_URL,
+                    headers={
+                        "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+                response.raise_for_status()
 
-            data = json.loads(cleaned)
-            if isinstance(data, dict):
-                data = [data]
+                parsed = response.json()
+                raw_output = parsed["choices"][0]["message"]["content"]
 
-            # Filter out previously generated questions using the cache
-            unique_questions = []
-            for q in data:
-                question_text = q.get("question")
-                if question_text and question_text not in generated_questions_cache:
-                    generated_questions_cache.add(question_text)
-                    unique_questions.append(q)
+                cleaned = raw_output.strip().strip("`").strip()
+                if cleaned.lower().startswith("json"):
+                    cleaned = cleaned[len("json"):].strip()
 
-            # If after filtering, we got less than requested, you might want to handle that
-            # (e.g. ask for more or just return fewer)
-            
-            return [QuizQuestion(**q) for q in unique_questions]
+                data = json.loads(cleaned)
+                if isinstance(data, dict):
+                    data = [data]
 
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Quiz generation failed: {e}")
+                # Filter new ones into collected
+                for q in data:
+                    question_text = q.get("question")
+                    if question_text and question_text not in generated_questions_cache:
+                        generated_questions_cache.add(question_text)
+                        collected.append(q)
+                        if len(collected) == count:
+                            break
 
+        except Exception as e:
+            if attempt == MAX_RETRIES - 1:
+                raise HTTPException(status_code=502, detail=f"Quiz generation failed: {e}")
+
+    if len(collected) < count:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not generate {count} unique questions after {MAX_RETRIES} attempts."
+        )
+
+    # Ensure exactly count
+    return [QuizQuestion(**q) for q in collected[:count]]

@@ -9,3 +9,4 @@ class QuizQuestion(BaseModel):
 
 class QuizRequest(BaseModel):
     user_input: str
+    language:str

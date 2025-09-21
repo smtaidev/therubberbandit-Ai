@@ -247,7 +247,7 @@ def call_groq_audit(deal_data: Dict):
                 "content": f"Audit this deal and return raw JSON only:\n{json.dumps(deal_data)}"
             }
         ],
-        "temperature": 0.5,  # Lower temperature for more consistent JSON output
+        "temperature": 0.1,  # Lower temperature for more consistent JSON output
         "response_format": {"type": "json_object"}  # Force JSON output
     }
 

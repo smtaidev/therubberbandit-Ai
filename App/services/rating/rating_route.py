@@ -73,7 +73,7 @@ def audit_deal(input_data: DealInput = Body(...)):
         result = json.loads(result_json_str)
         
         # Validate required fields exist (updated for new flag structure)
-        required_fields = ['score', 'badge', 'buyer_message', 'red_flags', 'green_flags', 
+        required_fields = ['score', 'buyer_name', 'badge', 'buyer_message', 'red_flags', 'green_flags', 
                           'blue_flags', 'normalized_pricing', 'apr', 'term', 
                           'quote_type', 'bundle_abuse', 'narrative']
         
@@ -90,6 +90,7 @@ def audit_deal(input_data: DealInput = Body(...)):
         # Return structured response with fallbacks
         return {
             "score": result.get("score", 0),
+            "buyer_name": "John Doe", 
             "badge": result.get("badge", "Unknown"),
             "buyer_message": result.get("buyer_message", "No message generated"),
             "red_flags": result.get("red_flags", []),

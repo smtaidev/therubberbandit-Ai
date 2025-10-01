@@ -206,6 +206,7 @@ You must categorize all findings into three flag types:
 ### OUTPUT SCHEMA (JSON)
 {
   "score": 0-100,
+  "buyer_name": "string",
   "badge": "Gold|Silver|Bronze|Red",
   "buyer_message": "string",
   "red_flags": [

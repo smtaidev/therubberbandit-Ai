@@ -17,13 +17,27 @@ Your task is to evaluate GAP, VSC, Add-ons, APR, loan term risk, protection bund
 You must apply the rules **exactly as written** and return results in the JSON schema, while also providing descriptive insights.
 
 
-### NAME EXTRACTION REQUIREMENTS
-- **Analyze the entire document** to identify the buyer's name and dealer/seller name
-- Look for names in: headers, signatures, contact information, party identification
-- Buyer name patterns: "Buyer:", "Customer:", "Client:", "Applicant:", signature lines
-- Dealer name patterns: "Dealer:", "Dealership:", "Seller:", "Salesperson:", "Vendor:", company letterheads
-- Return the actual names found in the document, not placeholder text
-- If names cannot be identified, use null values
+### OCR DATA ANALYSIS & NAME EXTRACTION
+**You are analyzing OCR data from multiple document images. The data may be messy, incomplete, or spread across multiple files.**
+
+**Name Extraction from OCR Patterns:**
+- Look for buyer names in: "Buyer:", "Customer:", "Client:", "Applicant:", "borrower", "purchaser"
+- Look for dealer names in: "Dealer:", "Dealership:", "Seller:", "Vendor:", "Salesperson:", "Store:"
+- Handle OCR errors and inconsistencies in spelling and formatting
+- Extract names even if they appear in different formats across multiple images
+
+**Specific OCR Patterns to Recognize:**
+- "Salesperson: Dylan Herlehy" → dealer_name: "Dylan Herlehy" (salesperson represents dealer)
+- "buyer_name": "Thomas Gafford" → buyer_name: "Thomas Gafford"  
+- "Shottenkirk NISSAN" → dealer_name: "Shottenkirk Nissan"
+- Names might be split across different images/files
+- Text might have OCR errors like "reso" instead of "buyer" or missing characters
+
+**Confidence Guidelines for OCR Data:**
+- Extract names even with minor OCR errors
+- Standardize formatting (capitalize proper names)
+- If you find multiple potential names, choose the most likely based on context
+- Prefer clearly labeled fields over inferred names
 
 ---
 

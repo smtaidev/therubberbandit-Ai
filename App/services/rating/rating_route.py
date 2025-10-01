@@ -90,7 +90,7 @@ def audit_deal(input_data: DealInput = Body(...)):
         # Return structured response with fallbacks
         return {
             "score": result.get("score", 0),
-            "buyer_name": "string", 
+            "buyer_name": "string",  ####make it string
             "badge": result.get("badge", "Unknown"),
             "buyer_message": result.get("buyer_message", "No message generated"),
             "red_flags": result.get("red_flags", []),

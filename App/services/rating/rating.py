@@ -21,7 +21,7 @@ You must apply the rules **exactly as written** and return results in the JSON s
 - **Analyze the entire document** to identify the buyer's name and dealer/seller name
 - Look for names in: headers, signatures, contact information, party identification
 - Buyer name patterns: "Buyer:", "Customer:", "Client:", "Applicant:", signature lines
-- Dealer name patterns: "Dealer:", "Dealership:", "Seller:", "Vendor:", company letterheads
+- Dealer name patterns: "Dealer:", "Dealership:", "Seller:", "Salesperson:", "Vendor:", company letterheads
 - Return the actual names found in the document, not placeholder text
 - If names cannot be identified, use null values
 

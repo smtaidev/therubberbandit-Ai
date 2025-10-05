@@ -33,6 +33,12 @@ You must apply the rules **exactly as written** and return results in the JSON s
 - Names might be split across different images/files
 - Text might have OCR errors like "reso" instead of "buyer" or missing characters
 
+**Additional Fields to Extract:**
+- Selling Price: Look for "Sale Price:", "Purchase Price:", "Total Price:", "Amount Financed:"
+- VIN Number: Look for "VIN:", "Vehicle Identification Number:", typically 17-character alphanumeric code
+- Date: Look for "Date:", "Contract Date:", "Purchase Date:", or any standard date format (MM/DD/YYYY, YYYY-MM-DD, etc.)
+- Extract these even if formatting varies across documents
+
 **Confidence Guidelines for OCR Data:**
 - Extract names even with minor OCR errors
 - Standardize formatting (capitalize proper names)
@@ -232,6 +238,9 @@ You must categorize all findings into three flag types:
   "buyer_name": "string|null", 
   "dealer_name": "string|null",
   "badge": "Gold|Silver|Bronze|Red",
+  "selling_price": number|null,
+  "vin_number": "string|null",
+  "date": "YYYY-MM-DD|string|null",
   "buyer_message": "string",
   "red_flags": [
     {"type": "string", "message": "string", "deduction": number, "item": "string"}
@@ -248,7 +257,7 @@ You must categorize all findings into three flag types:
   "quote_type": "Pencil|Purchase Agreement|Cash Offer|Lease|...",
   "bundle_abuse": {"active": true|false, "deduction": number},
   "narrative": {
-  "vehicle_overview": "string",
+    "vehicle_overview": "string",
     "trust_score_summary": "string",
     "market_comparison": "string",
     "gap_logic": "string",
@@ -260,43 +269,3 @@ You must categorize all findings into three flag types:
   }
 }
 """
-
-def call_groq_audit(deal_data: Dict):
-    """Send the audit prompt and deal data to Groq API"""
-    payload = {
-        "model": GROQ_MODEL,
-        "messages": [
-            {"role": "system", "content": audit_system_prompt},
-            {
-                "role": "user",
-                "content": f"Audit this deal and return raw JSON only:\n{json.dumps(deal_data)}"
-            }
-        ],
-        "temperature": 0.1,  # Lower temperature for more consistent JSON output
-        "response_format": {"type": "json_object"}  # Force JSON output
-    }
-
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    try:
-        # Correct Groq API endpoint
-        resp = requests.post(
-            "https://api.openai.com/v1/chat/completions",  # Updated endpoint
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
-        resp.raise_for_status()
-        
-        response_content = resp.json()
-        return response_content["choices"][0]["message"]["content"]
-        
-    except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Groq API connection error: {str(e)}")
-    except KeyError:
-        raise RuntimeError("Invalid response format from Groq API")
-    except json.JSONDecodeError:
-        raise RuntimeError("Failed to parse Groq API response")
